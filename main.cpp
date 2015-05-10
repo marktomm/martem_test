@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
             bool stats = false;
             bool list = false;
             bool all = false;
-         
+            
             if (argc > 2) {
                 string arg(argv[2]);
          
@@ -40,71 +40,81 @@ int main(int argc, char* argv[])
             else {
                 stats = true;
             }
-         
+            
             string line;
             boost::posix_time::ptime correctTime (boost::date_time::min_date_time);
-            std::list<FileLine> invalidLineNumbers;
+            std::list<FileLine> fileLinesList;
             int lineNr = 0;
             while (std::getline(file, line)) {
                 lineNr++;
-                boost::posix_time::ptime currentTime;
-                
-                try {
-                    string datetime = line.substr(0, 23);
-                    currentTime = boost::posix_time::time_from_string(datetime);
-                }
-                catch (int e) {
-                    invalidLineNumbers.push_back(FileLine(lineNr, line));
-                    continue;
-                }
-
+                FileLine fileLine = FileLine(lineNr, line);
+                boost::posix_time::ptime& currentTime = fileLine.getLineTime();
                 if (correctTime > currentTime) {
-                    invalidLineNumbers.push_back(FileLine(lineNr, line));
+                    fileLine.setIsCorrectLine(false);
                 }
                 else {
                     correctTime = currentTime;
                 }
+                fileLinesList.push_back(fileLine);
             }
             
             if (stats == true || all == true) {
                 cout << "Number of lines:" << std::endl;
-                cout << invalidLineNumbers.size() << std::endl;
+                cout << fileLinesList.size() << std::endl;
             
                 cout << "Invalid time stamps at line(s):" << std::endl;
-                int beginLineNumber = invalidLineNumbers.front().getLineNumber();
-                int previousLineNumber = beginLineNumber;
-                for(std::list<FileLine>::iterator i = invalidLineNumbers.begin();i != invalidLineNumbers.end(); i++) {
+                int incorrectLineBeginNumber = fileLinesList.front().getLineNumber();
+                int previousLineNumber = incorrectLineBeginNumber;
+                bool incorrectLines = false;
+                for(std::list<FileLine>::iterator i = fileLinesList.begin();i != fileLinesList.end(); i++) {
                     int lineNumber = (*i).getLineNumber();
-                    if ((lineNumber - previousLineNumber) > 1) {
-                        cout << beginLineNumber << "-" << previousLineNumber << std::endl;
-                        beginLineNumber = lineNumber;
-                        previousLineNumber = lineNumber;
+                    if (!(*i).isCorrectLine()) {
+                        if (incorrectLines == false) {
+                            incorrectLineBeginNumber = lineNumber;
+                            incorrectLines = true;
+                        }
                     }
                     else {
-                        previousLineNumber = lineNumber;
+                        if (incorrectLines == true) {
+                            if (incorrectLineBeginNumber == previousLineNumber) {
+                                cout << incorrectLineBeginNumber << std::endl;
+                            }
+                            else {
+                                cout << incorrectLineBeginNumber << "-" << previousLineNumber << std::endl;
+                            }
+                            incorrectLines = false;
+                        }
                     }
+
+                    previousLineNumber = lineNumber;
                 }
             }
             
             if (all == true || list == true) {
                 
                 cout << "Lines with invalid time stamps:" << std::endl;
-                int beginLineNumber = invalidLineNumbers.front().getLineNumber();
-                int previousLineNumber = beginLineNumber;
-                for(std::list<FileLine>::iterator i = invalidLineNumbers.begin(); i != invalidLineNumbers.end(); i++) {
+                FileLine& previousLine = fileLinesList.front();
+                bool incorrectLines = false;
+                for(std::list<FileLine>::iterator i = fileLinesList.begin();i != fileLinesList.end(); i++) {
                     int lineNumber = (*i).getLineNumber();
-                    string& lineText =  (*i).getLineText();
-                    
-                    if ((lineNumber - previousLineNumber) > 1) {
-                        cout << "---" << std::endl;
-                        beginLineNumber = lineNumber;
-                        previousLineNumber = lineNumber;
+                    if (!(*i).isCorrectLine()) {
+                        if (incorrectLines == false) {
+                            incorrectLines = true;
+                            
+                            cout << "---" << std::endl;
+                            cout << "[" << previousLine.getLineNumber() << "] " << previousLine.getLineText()  << std::endl;
+                        }
+                        cout << "[" << lineNumber << "] " << (*i).getLineText()  << std::endl;
                     }
                     else {
-                        previousLineNumber = lineNumber;
+                        if (incorrectLines == true) {
+                            cout << "[" << (*i).getLineNumber() << "] " << (*i).getLineText()  << std::endl;
+                            incorrectLines = false;
+                        }
                     }
-                    cout << "[" << lineNumber << "] " << lineText  << std::endl;
+                    previousLine = (*i);
                 }
+
             }
         }
     }
