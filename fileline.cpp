@@ -23,10 +23,17 @@ void FileLine::setLineTime (boost::posix_time::ptime dateTime) {
 
 boost::posix_time::ptime FileLine::getDateTimeFromLineString(string& line) {
     try {
-        string datetime = line.substr(0, 23);
-        return boost::posix_time::time_from_string(datetime);
-    }catch (int e) {
+        if (line.size() >= 23) {
+            string datetime = line.substr(0, 23);
+            return boost::posix_time::time_from_string(datetime);
+        }
+        else {
+            setIsCorrectLine(false);
+            return boost::date_time::min_date_time;
+        }
+    } catch (std::exception& e) {
         setIsCorrectLine(false);
         return boost::date_time::min_date_time;
     }
+    
 }
