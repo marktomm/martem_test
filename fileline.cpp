@@ -6,7 +6,9 @@
 using namespace std;
 
 
-FileLine::FileLine (int lineNr, string text) {
+FileLine::FileLine (int lineNr, string text)
+: longDelay(false)
+{
     lineNumber = lineNr;
     lineText = text;
     
@@ -15,6 +17,10 @@ FileLine::FileLine (int lineNr, string text) {
 
 void FileLine::setIsCorrectLine (bool correct) {
     correctLine = correct;
+}
+
+void FileLine::setLongDelay() {
+    longDelay = true;
 }
 
 void FileLine::setLineTime (boost::posix_time::ptime dateTime) {

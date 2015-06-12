@@ -12,6 +12,7 @@ class FileLine {
     int lineNumber;
     string lineText;
     bool correctLine = true;
+    bool longDelay;
     boost::posix_time::ptime lineTime;
     
 public:
@@ -19,9 +20,11 @@ public:
     int getLineNumber() { return lineNumber; };
     string& getLineText() { return lineText; };
     bool isCorrectLine () { return correctLine; }
+    bool isLongDelay () const { return longDelay; }
     boost::posix_time::ptime& getLineTime () { return lineTime; };
 
     void setIsCorrectLine (bool correct);
+    void setLongDelay();
 
 private:
     void setLineTime (boost::posix_time::ptime dateTime);

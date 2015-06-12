@@ -4,11 +4,15 @@
 #include <string>
 #include <boost/date_time.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/shared_ptr.hpp>
+#include <stdlib.h> 				// atoi
 
 using namespace std;
 
 int main(int argc, char* argv[])
 {
+    namespace bpt = boost::posix_time;
+  
     if (argc < 2) {
         cout << "Input file missing" << std::endl;
         return 1;
@@ -23,6 +27,9 @@ int main(int argc, char* argv[])
             bool stats = false;
             bool list = false;
             bool all = false;
+	    bool hangs = false;
+	    
+	    unsigned int msecs = 500;
             
             if (argc > 2) {
                 string arg(argv[2]);
@@ -33,6 +40,12 @@ int main(int argc, char* argv[])
                 else if (arg == "--all" || arg == "-all") {
                     all = true;
                 }
+                else if (arg == "--hangs-check") {
+		    hangs = true;
+		    if(argc > 3) {
+			msecs = atoi(argv[3]);
+		    } 
+		}
                 else {
                     stats = true;
                 }
@@ -42,19 +55,42 @@ int main(int argc, char* argv[])
             }
             
             string line;
-            boost::posix_time::ptime correctTime (boost::date_time::min_date_time);
+            bpt::ptime correctTime (boost::date_time::min_date_time);
             std::list<FileLine> fileLinesList;
             int lineNr = 0;
             while (std::getline(file, line)) {
                 lineNr++;
                 FileLine fileLine = FileLine(lineNr, line);
-                boost::posix_time::ptime& currentTime = fileLine.getLineTime();
-                if (correctTime > currentTime) {
-                    fileLine.setIsCorrectLine(false);
-                }
-                else {
-                    correctTime = currentTime;
-                }
+                bpt::ptime& currentTime = fileLine.getLineTime();
+		
+		if(hangs) {
+		    /* Use correctTime as prevTime */
+		    if(correctTime == boost::date_time::min_date_time) {
+			correctTime = currentTime;
+		    }
+		    else {
+			boost::shared_ptr<bpt::time_period> interval(new bpt::time_period(correctTime, currentTime));
+			
+			if(interval->is_null())
+			    interval.reset(new bpt::time_period(currentTime, correctTime));
+			
+			if(interval->length() > bpt::millisec(msecs))
+			  fileLine.setLongDelay();
+			  
+			correctTime = currentTime;
+		    }
+		      
+		}
+		else {
+		    if (correctTime > currentTime) {
+			fileLine.setIsCorrectLine(false);
+		    }
+		    else {
+			correctTime = currentTime;
+		    }
+		}
+		
+
                 fileLinesList.push_back(fileLine);
             }
             
@@ -116,6 +152,20 @@ int main(int argc, char* argv[])
                 }
 
             }
+            
+            if (hangs == true) {
+	      FileLine& previousLine = fileLinesList.front();
+                bool incorrectLines = false;
+                for(std::list<FileLine>::iterator i = fileLinesList.begin();i != fileLinesList.end(); i++) {
+                    int lineNumber = (*i).getLineNumber();
+                    if ((*i).isLongDelay()) {
+			cout << "---" << std::endl;
+			cout << "[" << previousLine.getLineNumber() << "] " << previousLine.getLineText()  << std::endl;
+                        cout << "[" << lineNumber << "] " << (*i).getLineText()  << std::endl;
+                    }
+                    previousLine = (*i);
+                }
+	    }
         }
     }
     
